@@ -7,12 +7,13 @@ import { userRoutes } from "./routes/users.js";
 import { uploadRoutes } from "./routes/upload.js";
 import { informationRoutes } from "./routes/information.js";
 import { inquiryRoutes } from "./routes/inquiries.js";
+import path from "path";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

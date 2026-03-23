@@ -33,7 +33,7 @@ authRoutes.post("/login", async (req: Request, res: Response) => {
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn }
+    { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
   );
 
   res.json({
