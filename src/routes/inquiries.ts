@@ -8,12 +8,21 @@ export const inquiryRoutes = Router();
 // Public: submit inquiry from website (no auth)
 inquiryRoutes.post("/", async (req: Request, res: Response) => {
   const { organizationName, phone, email, productName, productId, brand, requirements, inquiryType } = req.body;
-  const type = inquiryType === "service" ? "service" : "product";
+  const type: "product" | "service" | "contact" =
+    inquiryType === "service" ? "service" : inquiryType === "contact" ? "contact" : "product";
 
-  if (!organizationName || !phone || !productName) {
+  if (type === "contact") {
+    if (!organizationName || !phone) {
+      res.status(400).json({ error: "Нэр, утасны дугаар заавал шаардлагатай" });
+      return;
+    }
+  } else if (!organizationName || !phone || !productName) {
     res.status(400).json({ error: "Байгуулгын нэр, утас, бүтээгдэхүүн/үйлчилгээний нэр заавал шаардлагатай" });
     return;
   }
+
+  const resolvedProductName =
+    type === "contact" ? (productName || "Вэбсайт — Холбоо барих / Contact").trim() : productName || "";
 
   await query(
     `INSERT INTO product_inquiries (organization_name, phone, email, product_name, product_id, brand, requirements, inquiry_type)
@@ -22,7 +31,7 @@ inquiryRoutes.post("/", async (req: Request, res: Response) => {
       organizationName || "",
       phone || "",
       email || "",
-      productName || "",
+      resolvedProductName,
       productId ? Number(productId) : null,
       brand || "",
       requirements || "",
@@ -35,14 +44,17 @@ inquiryRoutes.post("/", async (req: Request, res: Response) => {
     sendInquiryConfirmationEmail({
       to: email,
       organizationName: organizationName || "",
-      productName: productName || "",
+      productName: resolvedProductName,
       brand: type === "product" ? brand || undefined : undefined,
       requirements: requirements || undefined,
       isService: type === "service",
+      isContact: type === "contact",
     }).catch(() => {});
   }
 
-  res.status(201).json({ message: "Үнийн санал амжилттай илгээгдлээ" });
+  const okMessage =
+    type === "contact" ? "Таны хүсэлт амжилттай илгээгдлээ" : "Үнийн санал амжилттай илгээгдлээ";
+  res.status(201).json({ message: okMessage });
 });
 
 // Admin only: get unread inquiries count (for sidebar badge)

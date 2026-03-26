@@ -177,6 +177,16 @@ async function migrate() {
     END $$
   `);
 
+  await client.query(`
+    DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='product_inquiries') THEN
+        ALTER TABLE product_inquiries DROP CONSTRAINT IF EXISTS product_inquiries_inquiry_type_check;
+        ALTER TABLE product_inquiries ADD CONSTRAINT product_inquiries_inquiry_type_check
+          CHECK (inquiry_type IN ('product', 'service', 'contact'));
+      END IF;
+    END $$
+  `);
+
   console.log("Migration complete!");
   console.log("Tables: users, products, product_features, product_specifications, information_items, product_inquiries");
 

@@ -27,6 +27,7 @@ export interface InquiryEmailData {
   brand?: string;
   requirements?: string;
   isService?: boolean;
+  isContact?: boolean;
 }
 
 export async function sendInquiryConfirmationEmail(data: InquiryEmailData): Promise<boolean> {
@@ -42,25 +43,25 @@ export async function sendInquiryConfirmationEmail(data: InquiryEmailData): Prom
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Үнийн санал хүлээн авлаа</title>
+  <title>${data.isContact ? "Хүсэлт хүлээн авлаа" : "Үнийн санал хүлээн авлаа"}</title>
 </head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f1f5f9;">
   <div style="max-width:560px;margin:0 auto;padding:24px;">
     <div style="background:linear-gradient(135deg,#0d9488,#14b8a6);padding:24px;border-radius:12px 12px 0 0;text-align:center;">
       <h1 style="margin:0;color:#fff;font-size:1.5rem;">iMED Tech</h1>
-      <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:0.95rem;">Үнийн санал хүлээн авлаа</p>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:0.95rem;">${data.isContact ? "Холбоо барих хүсэлт хүлээн авлаа" : "Үнийн санал хүлээн авлаа"}</p>
     </div>
     <div style="background:#fff;padding:24px;border-radius:0 0 12px 12px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
       <p style="margin:0 0 16px;color:#334155;font-size:1rem;">Сайн байна уу, <strong>${escapeHtml(data.organizationName)}</strong>,</p>
       <p style="margin:0 0 16px;color:#64748b;line-height:1.6;">
-        Таны үнийн санал хүсэлт амжилттай хүлээн авлаа. Манай баг удахгүй таны утас эсвэл имэйлээр холбогдох болно.
+        ${data.isContact ? "Таны хүсэлт амжилттай хүлээн авлаа." : "Таны үнийн санал хүсэлт амжилттай хүлээн авлаа."} Манай баг удахгүй таны утас эсвэл имэйлээр холбогдох болно.
       </p>
       <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:20px 0;">
-        <p style="margin:0 0 8px;color:#64748b;font-size:0.875rem;">${data.isService ? "Үнийн санал авах үйлчилгээ:" : "Үнийн санал авах бүтээгдэхүүн:"}</p>
+        <p style="margin:0 0 8px;color:#64748b;font-size:0.875rem;">${data.isContact ? "Хүсэлтийн төрөл:" : data.isService ? "Үнийн санал авах үйлчилгээ:" : "Үнийн санал авах бүтээгдэхүүн:"}</p>
         <p style="margin:0;font-weight:600;color:#0f172a;font-size:1rem;">
           ${escapeHtml(data.productName)}${data.brand ? ` (${escapeHtml(data.brand)})` : ""}
         </p>
-        ${data.requirements ? `<p style="margin:12px 0 0;color:#64748b;font-size:0.875rem;">${data.isService ? "Дэлгэрэнгүй:" : "Нэмэлт шаардлага:"} ${escapeHtml(data.requirements)}</p>` : ""}
+        ${data.requirements ? `<p style="margin:12px 0 0;color:#64748b;font-size:0.875rem;">${data.isContact ? "Нэмэлт:" : data.isService ? "Дэлгэрэнгүй:" : "Нэмэлт шаардлага:"} ${escapeHtml(data.requirements)}</p>` : ""}
       </div>
       <p style="margin:20px 0 0;color:#94a3b8;font-size:0.875rem;">
         Асуулт байвал бидэнтэй холбогдоно уу.
@@ -75,13 +76,20 @@ export async function sendInquiryConfirmationEmail(data: InquiryEmailData): Prom
 </html>
 `;
 
+  const textDetail = data.isContact
+    ? ""
+    : ` ${data.isService ? "Үйлчилгээ" : "Бүтээгдэхүүн"}: ${data.productName}${data.brand ? ` (${data.brand})` : ""}.`;
+  const textBody = `Сайн байна уу, ${data.organizationName}, ${
+    data.isContact ? "Таны хүсэлт амжилттай хүлээн авлаа." : "Таны үнийн санал хүсэлт амжилттай хүлээн авлаа."
+  }${textDetail} Манай баг удахгүй холбогдох болно.`;
+
   try {
     await trans.sendMail({
       from: `"iMED Tech" <${config.mail.from}>`,
       to: data.to,
-      subject: "Үнийн санал хүлээн авлаа | iMED Tech",
+      subject: `${data.isContact ? "Хүсэлт хүлээн авлаа" : "Үнийн санал хүлээн авлаа"} | iMED Tech`,
       html,
-      text: `Сайн байна уу, ${data.organizationName}, Таны үнийн санал хүсэлт амжилттай хүлээн авлаа. ${data.isService ? "Үйлчилгээ" : "Бүтээгдэхүүн"}: ${data.productName}${data.brand ? ` (${data.brand})` : ""}. Манай баг удахгүй холбогдох болно.`,
+      text: textBody,
     });
     console.log("[Mail] Inquiry confirmation sent to", data.to);
     return true;
