@@ -5,11 +5,45 @@ import { sendInquiryConfirmationEmail } from "../lib/mail.js";
 
 export const inquiryRoutes = Router();
 
+/** Талбарын нэр ялгаатай client-ууд (inquiry_type гэх мэт) */
+function rawInquiryType(body: Record<string, unknown>): string {
+  const v = body.inquiryType ?? body.inquiry_type;
+  return typeof v === "string" ? v.trim().toLowerCase() : "";
+}
+
+/**
+ * Хуучин deploy / алдагдсан inquiryType үед ч зөв ангилна:
+ * - contact: тодорхой productName (вэбсайтын холбоо барих маягт)
+ * - service / product: төрлийн талбар + productId (бүтээгдэхүүнд ID байна)
+ */
+function resolvePublicInquiryType(body: Record<string, unknown>): "product" | "service" | "contact" {
+  const t = rawInquiryType(body);
+  if (t === "service") return "service";
+  if (t === "contact") return "contact";
+
+  const productName = String(body.productName ?? "").trim();
+  const pid = body.productId;
+  const hasNumericProductId =
+    pid !== undefined && pid !== null && pid !== "" && !Number.isNaN(Number(pid)) && Number(pid) > 0;
+
+  if (hasNumericProductId) return "product";
+
+  const contactTitles = new Set([
+    "Вэбсайт — Холбоо барих хүсэлт",
+    "Website — Contact request",
+    "Вэбсайт — Холбоо барих / Contact",
+  ]);
+  if (contactTitles.has(productName)) return "contact";
+  if (productName.startsWith("Вэбсайт —") && productName.includes("Холбоо")) return "contact";
+  if (/^website\s*[—–-]\s*contact/i.test(productName)) return "contact";
+
+  return "product";
+}
+
 // Public: submit inquiry from website (no auth)
 inquiryRoutes.post("/", async (req: Request, res: Response) => {
-  const { organizationName, phone, email, productName, productId, brand, requirements, inquiryType } = req.body;
-  const type: "product" | "service" | "contact" =
-    inquiryType === "service" ? "service" : inquiryType === "contact" ? "contact" : "product";
+  const { organizationName, phone, email, productName, productId, brand, requirements } = req.body;
+  const type = resolvePublicInquiryType(req.body as Record<string, unknown>);
 
   if (type === "contact") {
     if (!organizationName || !phone) {
