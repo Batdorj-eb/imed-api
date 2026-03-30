@@ -3,6 +3,20 @@ import { query, getClient } from "../db/connection.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 import type { Product, ProductFeature, ProductSpecification } from "../types/index.js";
 
+/** Avoid Boolean("false") === true when clients send JSON strings. */
+function parseBodyHasWarranty(v: unknown): boolean {
+  if (v === undefined || v === null) return true;
+  if (v === false) return false;
+  if (v === true) return true;
+  if (typeof v === "number") return v !== 0;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "" || s === "false" || s === "0" || s === "no" || s === "off") return false;
+    if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  }
+  return Boolean(v);
+}
+
 export const productRoutes = Router();
 
 productRoutes.get("/", async (req: Request, res: Response) => {
@@ -55,6 +69,7 @@ productRoutes.get("/", async (req: Request, res: Response) => {
     }
   }
 
+  res.set("Cache-Control", "no-store");
   res.json({ products });
 });
 
@@ -76,6 +91,7 @@ productRoutes.get("/:id", async (req: Request, res: Response) => {
     [product.id]
   );
 
+  res.set("Cache-Control", "no-store");
   res.json({ product });
 });
 
@@ -87,7 +103,7 @@ productRoutes.post("/", authenticate, authorize("editor"), async (req: Request, 
     return;
   }
 
-  const warrantyFlag = has_warranty === undefined ? true : Boolean(has_warranty);
+  const warrantyFlag = parseBodyHasWarranty(has_warranty);
 
   const client = await getClient();
   try {
@@ -141,7 +157,7 @@ productRoutes.put("/:id", authenticate, authorize("editor"), async (req: Request
     return;
   }
 
-  const warrantyFlag = has_warranty === undefined ? true : Boolean(has_warranty);
+  const warrantyFlag = parseBodyHasWarranty(has_warranty);
 
   const client = await getClient();
   try {
