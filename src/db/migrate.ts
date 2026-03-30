@@ -62,6 +62,7 @@ async function migrate() {
       brochure VARCHAR(500) DEFAULT '',
       is_featured BOOLEAN NOT NULL DEFAULT FALSE,
       is_new BOOLEAN NOT NULL DEFAULT FALSE,
+      has_warranty BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -74,6 +75,10 @@ async function migrate() {
       END IF;
     END $$
   `);
+
+  await client.query(
+    `ALTER TABLE products ADD COLUMN IF NOT EXISTS has_warranty BOOLEAN NOT NULL DEFAULT TRUE`
+  );
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS product_features (

@@ -80,21 +80,23 @@ productRoutes.get("/:id", async (req: Request, res: Response) => {
 });
 
 productRoutes.post("/", authenticate, authorize("editor"), async (req: Request, res: Response) => {
-  const { brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new, features, specifications } = req.body;
+  const { brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new, has_warranty, features, specifications } = req.body;
 
   if (!name || !name_en) {
     res.status(400).json({ error: "Бүтээгдэхүүний нэр (MN, EN) заавал шаардлагатай" });
     return;
   }
 
+  const warrantyFlag = has_warranty === undefined ? true : Boolean(has_warranty);
+
   const client = await getClient();
   try {
     await client.query("BEGIN");
 
     const result = await client.query(
-      `INSERT INTO products (brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-      [brand || "", category_id || "", name, name_en, description || "", description_en || "", image || "", brochure || "", is_featured || false, is_new || false]
+      `INSERT INTO products (brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new, has_warranty)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      [brand || "", category_id || "", name, name_en, description || "", description_en || "", image || "", brochure || "", is_featured || false, is_new || false, warrantyFlag]
     );
 
     const productId = result.rows[0].id;
@@ -130,7 +132,7 @@ productRoutes.post("/", authenticate, authorize("editor"), async (req: Request, 
 });
 
 productRoutes.put("/:id", authenticate, authorize("editor"), async (req: Request, res: Response) => {
-  const { brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new, features, specifications } = req.body;
+  const { brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new, has_warranty, features, specifications } = req.body;
   const productId = Number(req.params.id);
 
   const existing = await query<Product[]>("SELECT id FROM products WHERE id = $1", [productId]);
@@ -139,14 +141,16 @@ productRoutes.put("/:id", authenticate, authorize("editor"), async (req: Request
     return;
   }
 
+  const warrantyFlag = has_warranty === undefined ? true : Boolean(has_warranty);
+
   const client = await getClient();
   try {
     await client.query("BEGIN");
 
     await client.query(
       `UPDATE products SET brand = $1, category_id = $2, name = $3, name_en = $4, description = $5, description_en = $6,
-       image = $7, brochure = $8, is_featured = $9, is_new = $10 WHERE id = $11`,
-      [brand || "", category_id || "", name, name_en, description || "", description_en || "", image || "", brochure || "", is_featured || false, is_new || false, productId]
+       image = $7, brochure = $8, is_featured = $9, is_new = $10, has_warranty = $11 WHERE id = $12`,
+      [brand || "", category_id || "", name, name_en, description || "", description_en || "", image || "", brochure || "", is_featured || false, is_new || false, warrantyFlag, productId]
     );
 
     await client.query("DELETE FROM product_features WHERE product_id = $1", [productId]);

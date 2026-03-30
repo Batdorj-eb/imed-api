@@ -23,6 +23,7 @@ export interface Product {
   brochure: string;
   is_featured: boolean;
   is_new: boolean;
+  has_warranty: boolean;
   created_at: Date;
   updated_at: Date;
   features?: ProductFeature[];
