@@ -151,13 +151,15 @@ productRoutes.put("/:id", authenticate, authorize("editor"), async (req: Request
   const { brand, category_id, name, name_en, description, description_en, image, brochure, is_featured, is_new, has_warranty, features, specifications } = req.body;
   const productId = Number(req.params.id);
 
-  const existing = await query<Product[]>("SELECT id FROM products WHERE id = $1", [productId]);
-  if (!existing[0]) {
+  const existingRows = await query<Product[]>("SELECT id, has_warranty FROM products WHERE id = $1", [productId]);
+  const existing = existingRows[0];
+  if (!existing) {
     res.status(404).json({ error: "Бүтээгдэхүүн олдсонгүй" });
     return;
   }
 
-  const warrantyFlag = parseBodyHasWarranty(has_warranty);
+  const bodyHasWarranty = Object.prototype.hasOwnProperty.call(req.body as object, "has_warranty");
+  const warrantyFlag = bodyHasWarranty ? parseBodyHasWarranty(has_warranty) : Boolean(existing.has_warranty);
 
   const client = await getClient();
   try {
